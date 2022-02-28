@@ -175,7 +175,11 @@ ParseFormatResult parse_format(char const* format, char const* endformat)
     return result;
 }
 
-using Clock = std::chrono::high_resolution_clock;
+using Clock = std::conditional_t<
+    std::chrono::high_resolution_clock::is_steady,
+    std::chrono::high_resolution_clock,
+    std::chrono::steady_clock>;
+static_assert(Clock::is_steady);
 
 bool write_time_impl(long long d1, long long d2, PartFormat duration_format)
 {
