@@ -181,7 +181,40 @@ using Clock = std::conditional_t<
     std::chrono::steady_clock>;
 static_assert(Clock::is_steady);
 
-bool write_time_impl(long long d1, long long d2, PartFormat duration_format)
+static constexpr char digit10_pairs[200] = {
+    '0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5', '0', '6',
+    '0', '7', '0', '8', '0', '9', '1', '0', '1', '1', '1', '2', '1', '3',
+    '1', '4', '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0',
+    '2', '1', '2', '2', '2', '3', '2', '4', '2', '5', '2', '6', '2', '7',
+    '2', '8', '2', '9', '3', '0', '3', '1', '3', '2', '3', '3', '3', '4',
+    '3', '5', '3', '6', '3', '7', '3', '8', '3', '9', '4', '0', '4', '1',
+    '4', '2', '4', '3', '4', '4', '4', '5', '4', '6', '4', '7', '4', '8',
+    '4', '9', '5', '0', '5', '1', '5', '2', '5', '3', '5', '4', '5', '5',
+    '5', '6', '5', '7', '5', '8', '5', '9', '6', '0', '6', '1', '6', '2',
+    '6', '3', '6', '4', '6', '5', '6', '6', '6', '7', '6', '8', '6', '9',
+    '7', '0', '7', '1', '7', '2', '7', '3', '7', '4', '7', '5', '7', '6',
+    '7', '7', '7', '8', '7', '9', '8', '0', '8', '1', '8', '2', '8', '3',
+    '8', '4', '8', '5', '8', '6', '8', '7', '8', '8', '8', '9', '9', '0',
+    '9', '1', '9', '2', '9', '3', '9', '4', '9', '5', '9', '6', '9', '7',
+    '9', '8', '9', '9',
+};
+
+char* push_2digits(char* s, Clock::duration::rep n)
+{
+    assert(n < 100);
+    *s++ = digit10_pairs[n*2];
+    *s++ = digit10_pairs[n*2+1];
+    return s;
+}
+
+char* push_3digits(char* s, Clock::duration::rep n)
+{
+    assert(n < 1000);
+    *s++ = char(n / 100 + '0');
+    return push_2digits(s, n % 100);
+}
+
+bool write_time_impl(Clock::duration::rep d1, Clock::duration::rep d2, PartFormat duration_format)
 {
     char output[64];
     char* s = output;
@@ -189,9 +222,7 @@ bool write_time_impl(long long d1, long long d2, PartFormat duration_format)
     auto num_len = std::size_t(s - output);
 
     *s++ = '.';
-    *s++ = char(d2 / 100 + '0');
-    *s++ = char(d2 % 100 / 10 + '0');
-    *s++ = char(d2 % 10 + '0');
+    s = push_3digits(s, d2);
 
     auto len = std::size_t(s - output);
     if (duration_format.len > num_len)
@@ -235,15 +266,24 @@ bool write_format(Clock::duration duration, PartFormat part, char const* input, 
             auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
             duration -= seconds;
             auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+
             char output[128];
             char* s = output;
-            s = std::to_chars(s, std::end(output), hours.count()).ptr;
+            if (hours.count() <= 99)
+            {
+                s = push_2digits(s, hours.count());
+            }
+            else
+            {
+                s = std::to_chars(s, std::end(output), hours.count()).ptr;
+            }
             *s++ = ':';
-            s = std::to_chars(s, std::end(output), minutes.count()).ptr;
+            s = push_2digits(s, minutes.count());
             *s++ = ':';
-            s = std::to_chars(s, std::end(output), seconds.count()).ptr;
+            s = push_2digits(s, seconds.count());
             *s++ = '.';
-            s = std::to_chars(s, std::end(output), milliseconds.count()).ptr;
+            s = push_3digits(s, milliseconds.count());
+
             auto len2 = std::size_t(s-output);
             return fwrite(output, 1, len2, stdout) == len2;
         }
