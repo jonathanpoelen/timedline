@@ -348,7 +348,7 @@ void timedline(std::vector<PartFormat> const& parts)
 void usage(char const* progname, FILE* file)
 {
     std::fprintf(file, "Usage: %s format\n\n%s", progname,
-        " %%: an % character\n"
+        " %%: a single %\n"
         " %i: input text\n"
         " %t: time in hh:mm:ss.ms format\n"
         " %s: time in seconds\n"
